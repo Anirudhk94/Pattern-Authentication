@@ -26,6 +26,7 @@ angular.module('starter', ['ionic','ngCordova'])
   });
 })
 
+
 .controller('homeCtrl',function($scope){
 $scope.sayHi1 = function(){
 console.log("bloody hard");
@@ -165,9 +166,110 @@ console.log("bloody hard");
 .controller('creditCtrl',function($scope){
 })
 
+.controller('LoginCtrl', function($scope, LoginService, $ionicPopup, $state) {
+    // 1
+    $scope.log_pattern = LoginService.getLoginPattern();
+
+    // 2
+    var lock = new PatternLock("#lockPattern", {
+        // 3
+        onDraw:function(pattern){
+            // 4
+            if ($scope.log_pattern) {
+                // 5
+                LoginService.checkLoginPattern(pattern).success(function(data) {
+                    lock.reset();
+                    $state.go('home');
+                }).error(function(data) {
+                    lock.error();
+                });
+            } else {
+                // 6
+                LoginService.setLoginPattern(pattern);
+                lock.reset();
+                $scope.$apply(function() {
+                    $scope.log_pattern = LoginService.getLoginPattern();    
+                });
+            }
+        }
+    });
+
+    $scope.login = function() {
+        LoginService.loginUser($scope.data.username, $scope.data.password).success(function(data) {
+            $state.go('tab.dash');
+        }).error(function(data) {
+            var alertPopup = $ionicPopup.alert({
+                title: 'Login failed!',
+                template: 'Please check your credentials!'
+            });
+        });
+    }
+})
+
+.service('LoginService', function($q) {
+    return {
+        loginUser: function(name, pw) {
+            var deferred = $q.defer();
+            var promise = deferred.promise;
+
+            promise.success = function(fn) {
+                promise.then(fn);
+                return promise;
+            }
+            promise.error = function(fn) {
+                promise.then(null, fn);
+                return promise;
+            }
+
+            if (name == 'user' && pw == 'secret') {
+                deferred.resolve('Welcome ' + name + '!');
+            } else {
+                deferred.reject('Wrong credentials.');
+            }
+
+            return promise;
+        },
+        getLoginPattern: function() {
+            return window.localStorage.getItem("login_pattern");
+        },
+        setLoginPattern: function(pattern) {
+            window.localStorage.setItem("login_pattern", pattern);
+        },
+        checkLoginPattern: function(pattern) {
+            var deferred = $q.defer();
+            var promise = deferred.promise;
+
+            promise.success = function(fn) {
+                promise.then(fn);
+                return promise;
+            }
+            promise.error = function(fn) {
+                promise.then(null, fn);
+                return promise;
+            }
+
+            if (pattern == this.getLoginPattern()) {
+                deferred.resolve();
+            } else {
+                deferred.reject();
+            }
+
+            return promise;
+        }
+
+    }
+})
+
 
 .config(function($stateProvider, $urlRouterProvider) {
   $stateProvider
+
+    .state('login', {
+      url: '/login',
+      templateUrl: 'templates/login.html',
+      controller: 'LoginCtrl'
+    })
+
     .state('home', {
       url: '/home',
       templateUrl: 'templates/home.html',
@@ -194,7 +296,8 @@ console.log("bloody hard");
       templateUrl: 'templates/credit.html',
       controller: 'creditCtrl'
     });
-  $urlRouterProvider.otherwise('/home');
+
+  $urlRouterProvider.otherwise('/login');
     
 });
 
